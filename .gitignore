@@ -1,0 +1,8 @@
+#Secret Bot Key
+.env
+
+#Python Testing File
+testing.py
+
+#Discord Logs
+discord.log

@@ -1,0 +1,182 @@
+import discord
+from discord.ext import commands
+import logging
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+token = os.getenv('DISCORD_TOKEN')
+
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f"Bott is ready to go!")
+
+
+count = 0
+Counting_Channel = 1419648856395616266
+counts = {}
+sorted_counts = sorted(counts.items(), key= lambda x: x[1], reverse=True)
+highest_scorer = None
+
+@bot.event
+async def on_member_join(member):
+    await member.send(f"Welcome to the server {member.name}")
+
+@bot.event
+async def on_message(message):
+    my_guild = bot.get_guild(1417635099113033810)
+    bott_pings = discord.utils.get(my_guild.roles, name="Bot Pings")
+    amateur_counter = discord.utils.get(my_guild.roles, name="Amateur Counter")
+    intermediate_counter = discord.utils.get(my_guild.roles, name="Intermediate Counter")
+    advanced_counter = discord.utils.get(my_guild.roles, name="Advanced Counter")
+    pro_counter = discord.utils.get(my_guild.roles, name="Pro Counter")
+    master_counter = discord.utils.get(my_guild.roles, name="Master Counter")
+    global count
+    global highest_scorer
+    #Allow other messages/commands to be read
+    await bot.process_commands(message)
+
+    #Make sure the message is in the right channel and not by the bot
+    if message.channel.id != Counting_Channel:
+        return
+    if message.author == bot.user:
+        return
+    
+    #Useful variables to have for shorthand
+    user_id = message.author.id
+    user_name = message.author.name
+    
+    #Only numeric messages count
+    mesg = message.content.strip()
+    try:
+        value = int(mesg)
+    except ValueError:
+        return
+    
+
+    #Set up a key/value if the sender doesn't have one
+    if message.author.id not in counts:
+        counts[message.author.id] = 0
+    
+    #Mess up counter
+    if value != counts[user_id] + 1:
+        counts[user_id] = 0
+        await message.channel.send(f"{user_name}, **you messed up your count!** Your score is now back to 0.")
+
+    #Otherwise implement the count
+    else:
+        counts[user_id] = counts[user_id] + 1
+        #Autocommand for achievement checking
+        if counts[user_id] >= 10 and counts[user_id] < 50 and amateur_counter not in message.author.roles:
+            await message.author.add_roles(amateur_counter)
+            await message.channel.send(f"{user_name} just earned an achievement - **Amateur Typer** Check your roles!")
+        elif counts[user_id] >= 50 and counts[user_id] < 100 and intermediate_counter not in message.author.roles:
+            await message.author.remove_roles(amateur_counter)
+            await message.author.add_roles(intermediate_counter)
+            await message.channel.send(f"{user_name} just earned an achievement - **Intermediate Typer** Check your roles!")
+        elif counts[user_id] >= 100 and counts[user_id] < 250 and advanced_counter not in message.author.roles:
+            await message.author.remove_roles(intermediate_counter)
+            await message.author.add_roles(advanced_counter)
+            await message.channel.send(f"{user_name} just earned an achievement - **Advanced Counter** Check your roles!")
+        elif counts[user_id] >= 250 and counts[user_id] < 1000 and pro_counter not in message.author.roles:
+            await message.author.remove_roles(advanced_counter)
+            await message.author.add_roles(pro_counter)
+            await message.channel.send(f"{user_name} just earned an achievement - **Pro Counter** Check your roles!")
+        elif counts[user_id] >= 3010 and master_counter not in message.author.roles:
+            await message.author.remove_roles(pro_counter)
+            await message.author.add_roles(master_counter)
+            await message.channel.send(f"{user_name} just earned an achievement - **Master Counter** Check your roles!")
+
+    #Autocommand for when there is a new top scorer
+    if counts:
+        sorted_counts = sorted(counts.items(), key= lambda x: x[1], reverse=True)
+        new_highest_scorer = message.guild.get_member(sorted_counts[0][0])
+        if new_highest_scorer != highest_scorer:
+            if highest_scorer:
+                if bott_pings in highest_scorer.roles:
+                    await message.channel.send(f"{new_highest_scorer} just beat {highest_scorer.mention}'s score to become our **new highest scorer!**")
+                else:
+                    await message.channel.send(f"{new_highest_scorer} just beat {highest_scorer}'s score to become our **new highest scorer!**")
+            else:
+                await message.channel.send(f"{new_highest_scorer} just became our **new highest scorer!**")
+            highest_scorer = new_highest_scorer
+    
+@bot.command()
+async def score(ctx, member: discord.Member = None):
+    """Grab your score, or put in a friend's username to get *their* score!"""
+    target_user = member or ctx.author
+    user_score = counts.get(target_user.id, 0)
+    await ctx.send(f"**{target_user}** has a score of: {user_score}")
+
+@bot.command()
+async def leaderboard(ctx):
+    """Show the top 3 scorers."""
+    sorted_counter = sorted(counts.items(), key= lambda x: x[1], reverse=True)
+    for i in range(len(sorted_counter)):
+        if i > 2:
+            break
+        name = ctx.guild.get_member(sorted_counter[i][0])
+        if name:
+            name = name.display_name
+        score = sorted_counter[i][1]
+        if i == 0:
+            await ctx.send(f":first_place:: **{name}** - {score} points!")
+        elif i == 1:
+            await ctx.send(f":second_place:: **{name}** - {score} points!")
+        elif i == 2:
+            await ctx.send(f":third_place:: **{name}** - {score} points!")
+
+#Command - Secret to give plus two points
+@bot.command()
+async def secret(ctx):
+    """Top secret..."""
+    counts.setdefault(ctx.author.id, 0)
+    counts[ctx.author.id] += 2
+    await ctx.send(f"{ctx.author.name} just got an extra two points! Don't tell anyone though...")
+
+#Command - Help to explain the commands
+@bot.command()
+async def helpme(ctx):
+    """See my explanation of the commands in proper Discord formatting"""
+    commands = {}
+    THE_message = ""
+    for cmd in ctx.bot.commands:
+        if cmd.help:
+            commands[cmd.name] = cmd.help
+        else:
+            commands[cmd.name] = "No description provided, sorry!"
+    THE_message += "Our current commands are: \n"
+    for k,v in commands.items():
+        THE_message += (f"\n{k} - {v}")
+    await ctx.send(THE_message)
+
+#Command - Rules to show how to play
+@bot.command()
+async def rules(ctx):
+    """Explain the basic rules of the game"""
+    await ctx.send("Here's how to play:\n1. Start counting up from zero to increase your score.\n2. Keep counting, but don't mess up or else your score is **back to zero!**\n3. Try to beat the scores of your friends! Use '!leaderboard' to see the current top scorers.\n4. Have fun!")
+
+@bot.command()
+async def pingrole(ctx):
+    """Add the ping role to GET NOTIFIED when the top score is beaten"""
+    role = discord.utils.get(ctx.guild.roles, name="Bot Pings")
+    await ctx.author.add_roles(role)
+    await ctx.send(f"{ctx.author}, you will **now be pinged** for Counter Bott notifications!")
+
+@bot.command()
+async def nopingrole(ctx):
+    """Remove the Ping role to NOT GET NOTIFIED when the top score is beaten"""
+    role = discord.utils.get(ctx.guild.roles, name="Bot Pings")
+    await ctx.author.remove_roles(role)
+    await ctx.send(f"{ctx.author}, you will **no longer be pinged** for Counter Bott notifications!")
+
+# Make a GitHub repo (and upload to it without the bot token tho)
+
+bot.run(token, log_handler=handler, log_level=logging.DEBUG)
