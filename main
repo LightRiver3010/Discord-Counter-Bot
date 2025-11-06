@@ -112,7 +112,7 @@ async def on_message(message):
         current_highest_scorer = highest_scorers.get(my_guild.id)
         new_highest_scorer = my_guild.get_member(highest_scorer_id)
         
-        if new_highest_scorer and (current_highest_scorer is None or new_highest_scorer.id != current_highest_scorer.id:
+        if new_highest_scorer and (current_highest_scorer is None or new_highest_scorer.id != current_highest_scorer.id):
             if current_highest_scorer:
                 if bott_pings in current_highest_scorer.roles:
                     await message.channel.send(f"{new_highest_scorer} just beat {current_highest_scorer.mention}'s score to become our **new highest scorer!**")
