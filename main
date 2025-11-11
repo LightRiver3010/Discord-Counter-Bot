@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-token = os.getenv('DISCORD_TOKEN')
+token = os.getenv('DISCORD_TOKEN2')
 
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 intents = discord.Intents.default()
@@ -21,12 +21,20 @@ async def on_ready():
 
 count = 0
 
-Counting_Channel = 1419648856395616266
 countingChannelName = "bot-counting-channel"
 
 counts = {}
 sorted_counts = sorted(counts.items(), key= lambda x: x[1], reverse=True)
 highest_scorers = {}
+
+@bot.event
+async def on_guild_join(guild):
+    roles = ["Bot Pings", "Amateur Counter", "Intermediate Counter", "Advanced Counter", "Pro Counter", "Master Counter"]
+    exisiting_roles = [role.name for role in guild.roles]
+    for i in roles:
+        if i not in exisiting_roles:
+            await guild.create_role(name=i)
+            print(f"Created a role named {i} in guild {guild.name}!")
 
 @bot.event
 async def on_message(message):
@@ -56,7 +64,6 @@ async def on_message(message):
     pro_counter = discord.utils.get(my_guild.roles, name="Pro Counter")
     master_counter = discord.utils.get(my_guild.roles, name="Master Counter")
     global count
-    global highest_scorer
     
     #Useful variables to have for shorthand
     user_id = message.author.id
@@ -139,7 +146,7 @@ async def leaderboard(ctx):
     if not sorted_counter:
         await ctx.send("No scores from this server yet. Get counting!")
         return
-
+    message = ""
     for i in range(len(sorted_counter)):
         if i > 2:
             break
@@ -148,11 +155,15 @@ async def leaderboard(ctx):
             name = name.display_name
         score = sorted_counter[i][1]
         if i == 0:
-            await ctx.send(f":first_place:: **{name}** - {score} points!")
+            first = (f":first_place:: **{name}** - {score} points!\n")
+            message += first
         elif i == 1:
-            await ctx.send(f":second_place:: **{name}** - {score} points!")
+            second = (f":second_place:: **{name}** - {score} points!\n")
+            message += second
         elif i == 2:
-            await ctx.send(f":third_place:: **{name}** - {score} points!")
+            third = (f":third_place:: **{name}** - {score} points!")
+            message += third
+    await ctx.send(message)
 
 #Command - Secret to give plus two points
 @bot.command()
@@ -198,7 +209,5 @@ async def nopingrole(ctx):
     role = discord.utils.get(ctx.guild.roles, name="Bot Pings")
     await ctx.author.remove_roles(role)
     await ctx.send(f"{ctx.author}, you will **no longer be pinged** for Counter Bott notifications!")
-
-# Make a GitHub repo (and upload to it without the bot token tho)
 
 bot.run(token, log_handler=handler, log_level=logging.DEBUG)
