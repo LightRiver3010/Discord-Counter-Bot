@@ -6,3 +6,6 @@ testing.py
 
 #Discord Logs
 discord.log
+
+#VSCode
+.vscode/
